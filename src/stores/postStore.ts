@@ -1,13 +1,13 @@
 import { makeAutoObservable, runInAction } from 'mobx';
 import { togglePostLike } from '../api/posts';
-import { Post } from '../types/post';
+import { Post } from '../types/api';
 
 type PostLikeState = {
   isLiked: boolean;
   likesCount: number;
 };
 
-export const feedStore = makeAutoObservable({
+export const postStore = makeAutoObservable({
   /** Map of postId → like state, initialized from server data */
   postLikeStates: new Map<string, PostLikeState>(),
 
@@ -28,6 +28,18 @@ export const feedStore = makeAutoObservable({
   },
 
   /**
+   * Initialize like state from a single post detail response.
+   */
+  initFromPost(post: Post) {
+    if (!this.postLikeStates.has(post.id)) {
+      this.postLikeStates.set(post.id, {
+        isLiked: post.isLiked,
+        likesCount: post.likesCount,
+      });
+    }
+  },
+
+  /**
    * Get the current like state for a post.
    * Falls back to server defaults if not yet tracked.
    */
@@ -38,6 +50,16 @@ export const feedStore = makeAutoObservable({
         likesCount: serverFallback.likesCount,
       }
     );
+  },
+
+  /**
+   * Set like count from WebSocket `like_updated` event.
+   */
+  setLikeCount(postId: string, count: number) {
+    const state = this.postLikeStates.get(postId);
+    if (state) {
+      state.likesCount = count;
+    }
   },
 
   /**

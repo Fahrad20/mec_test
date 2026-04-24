@@ -1,22 +1,44 @@
-import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
 import { observer } from 'mobx-react-lite';
-import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, RefreshControl, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
+import { FlatList, RefreshControl, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ErrorBanner } from '../../src/components/ErrorBanner';
 import { FeedFooterLoader } from '../../src/components/FeedFooterLoader';
 import { PostCard } from '../../src/components/PostCard';
 import { PostCardSkeleton } from '../../src/components/PostCardSkeleton';
+import { TabFilter, TabItem } from '../../src/components/TabFilter';
 import { useFeed } from '../../src/hooks/useFeed';
 import { useThemeTokens } from '../../src/hooks/useThemeTokens';
-import { feedStore } from '../../src/stores/feedStore';
-import { themeStore } from '../../src/stores/themeStore';
-import { Post } from '../../src/types/post';
+import { postStore } from '../../src/stores/postStore';
+import { Post, TierFilter } from '../../src/types/api';
+import { useFeedStyles } from './feed.styles';
+
+const TIER_TABS: TabItem[] = [
+  { key: 'all', label: '' },
+  { key: 'free', label: '' },
+  { key: 'paid', label: '' },
+];
 
 export default observer(function FeedScreen() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const tokens = useThemeTokens();
+  const [activeTab, setActiveTab] = useState('all');
+
+  const tabs = useMemo(
+    () =>
+      TIER_TABS.map((tab) => ({
+        ...tab,
+        label:
+          tab.key === 'all' ? t('feed.all') : tab.key === 'free' ? t('feed.free') : t('feed.paid'),
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, i18n.language],
+  );
+
+  const tier: TierFilter = activeTab === 'all' ? undefined : (activeTab as TierFilter);
+
   const {
     data,
     isLoading,
@@ -26,57 +48,12 @@ export default observer(function FeedScreen() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-  } = useFeed();
-
-  // --- Easter egg: multi-tap + hold ---
-  const tapCountRef = useRef(0);
-  const lastTapRef = useRef(0);
-  const holdTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handlePressIn = useCallback(() => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 400) {
-      tapCountRef.current += 1;
-
-      // 2 taps + hold → switch language
-      if (tapCountRef.current === 2) {
-        holdTimeoutRef.current = setTimeout(() => {
-          const newLang = i18n.language === 'ru' ? 'en' : 'ru';
-          i18n.changeLanguage(newLang);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          tapCountRef.current = 0;
-        }, 3000);
-      }
-
-      // 3 taps + hold → switch theme
-      if (tapCountRef.current === 3) {
-        // Cancel the pending language switch from 2-tap
-        if (holdTimeoutRef.current) {
-          clearTimeout(holdTimeoutRef.current);
-        }
-        holdTimeoutRef.current = setTimeout(() => {
-          themeStore.toggle();
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-          tapCountRef.current = 0;
-        }, 3000);
-      }
-    } else {
-      tapCountRef.current = 1;
-    }
-    lastTapRef.current = now;
-  }, [i18n]);
-
-  const handlePressOut = useCallback(() => {
-    if (holdTimeoutRef.current) {
-      clearTimeout(holdTimeoutRef.current);
-      holdTimeoutRef.current = null;
-    }
-  }, []);
+  } = useFeed(tier);
 
   useEffect(() => {
     if (data?.pages) {
       const allPosts = data.pages.flatMap((page) => page.posts);
-      feedStore.initFromPosts(allPosts);
+      postStore.initFromPosts(allPosts);
     }
   }, [data]);
 
@@ -87,11 +64,18 @@ export default observer(function FeedScreen() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const handleRefresh = useCallback(() => {
-    feedStore.reset();
+    postStore.reset();
     refetch();
   }, [refetch]);
 
-  const renderItem = useCallback(({ item }: { item: Post }) => <PostCard post={item} />, []);
+  const handlePostPress = useCallback((postId: string) => {
+    router.push(`/post/${postId}`);
+  }, []);
+
+  const renderItem = useCallback(
+    ({ item }: { item: Post }) => <PostCard post={item} onPress={handlePostPress} />,
+    [handlePostPress],
+  );
 
   const keyExtractor = useCallback((item: Post) => item.id, []);
 
@@ -102,31 +86,16 @@ export default observer(function FeedScreen() {
     return null;
   }, [isFetchingNextPage]);
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        container: {
-          flex: 1,
-          backgroundColor: tokens.colors.background,
-        },
-        listContent: {
-          padding: tokens.spacing.md,
-        },
-        easterEggArea: {
-          position: 'absolute',
-          top: 50,
-          left: 20,
-          width: 60,
-          height: 60,
-          zIndex: 999,
-        },
-      }),
-    [tokens],
-  );
+  const handleTabPress = useCallback((key: string) => {
+    setActiveTab(key);
+  }, []);
+
+  const styles = useFeedStyles(tokens);
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <TabFilter tabs={tabs} activeKey={activeTab} onTabPress={handleTabPress} />
         <View style={styles.listContent}>
           <PostCardSkeleton />
           <PostCardSkeleton />
@@ -144,6 +113,8 @@ export default observer(function FeedScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <TabFilter tabs={tabs} activeKey={activeTab} onTabPress={handleTabPress} />
+
       <FlatList
         data={posts}
         keyExtractor={keyExtractor}
@@ -165,10 +136,6 @@ export default observer(function FeedScreen() {
         windowSize={7}
         initialNumToRender={5}
       />
-
-      <TouchableWithoutFeedback onPressIn={handlePressIn} onPressOut={handlePressOut}>
-        <View style={styles.easterEggArea} />
-      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 });

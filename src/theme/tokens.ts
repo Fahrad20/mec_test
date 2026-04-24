@@ -17,6 +17,8 @@ const lightColors = {
   border: '#E8E8E8',
   badgeLiked: '#FFE6EC',
   skeleton: '#E8E8E8',
+  error: '#FF3B30',
+  wsIndicator: '#FF9500',
 };
 
 const darkColors = {
@@ -36,6 +38,8 @@ const darkColors = {
   border: '#2E2E2E',
   badgeLiked: '#3D1A2A',
   skeleton: '#2E2E2E',
+  error: '#FF453A',
+  wsIndicator: '#FFB340',
 };
 
 const shared = {
@@ -47,6 +51,10 @@ const shared = {
     xl: 32,
   },
   typography: {
+    h1: { fontSize: 24, fontWeight: '700' as const },
+    h2: { fontSize: 20, fontWeight: '600' as const },
+    body: { fontSize: 16, fontWeight: '400' as const },
+    caption: { fontSize: 12, fontWeight: '400' as const },
     title: { fontSize: 16, fontWeight: '700' as const },
     authorName: { fontSize: 14, fontWeight: '600' as const },
     postPreview: { fontSize: 14, fontWeight: '400' as const, lineHeight: 20 },
@@ -55,6 +63,10 @@ const shared = {
     buttonText: { fontSize: 15, fontWeight: '600' as const },
   },
   radius: {
+    sm: 4,
+    md: 8,
+    lg: 16,
+    full: 9999,
     card: 16,
     avatar: 20,
     button: 12,

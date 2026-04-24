@@ -11,6 +11,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useThemeTokens } from '../../hooks/useThemeTokens';
 import { useFeedFooterLoaderStyles } from './styles';
+import { PulsingDotProps } from './types';
 
 const DOT_COUNT = 3;
 const ANIMATION_DURATION = 400;
@@ -28,11 +29,6 @@ export const FeedFooterLoader = observer(() => {
     </View>
   );
 });
-
-type PulsingDotProps = {
-  delay: number;
-  dotStyle: object;
-};
 
 const PulsingDot = ({ delay, dotStyle }: PulsingDotProps) => {
   const scale = useSharedValue(0.6);

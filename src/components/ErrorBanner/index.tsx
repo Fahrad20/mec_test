@@ -5,10 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Text, TouchableOpacity, View } from 'react-native';
 import { useThemeTokens } from '../../hooks/useThemeTokens';
 import { useErrorBannerStyles } from './styles';
-
-type ErrorBannerProps = {
-  onRetry: () => void;
-};
+import { ErrorBannerProps } from './types';
 
 export const ErrorBanner = observer(({ onRetry }: ErrorBannerProps) => {
   const { t } = useTranslation();
